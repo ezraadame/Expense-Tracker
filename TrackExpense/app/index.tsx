@@ -9,7 +9,9 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <Text>I have reset the project using the script available - Ezra</Text>
+      <Text>I have reset the project using the script available - Ezra
+        Testing 123.
+      </Text>
     </View>
   );
 }

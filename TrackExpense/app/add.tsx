@@ -1,11 +1,10 @@
-import { CATEGORIES, Category, useExpenses } from "@/context/expenses";
+import { useExpenses } from "@/context/expenses";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -29,43 +28,30 @@ const C = {
 
 export default function AddTransaction() {
   const { addTransaction } = useExpenses();
+  const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [merchant, setMerchant] = useState("");
-  const [category, setCategory] = useState<Category | null>(null);
-  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const merchantRef = useRef<TextInput>(null);
+  const amountRef = useRef<TextInput>(null);
 
   async function handleSave() {
+    if (!name.trim()) {
+      Alert.alert("Enter a name", "What was this transaction for?");
+      return;
+    }
     const parsed = parseFloat(amount.replace(/[^0-9.]/g, ""));
     if (!parsed || parsed <= 0) {
       Alert.alert("Enter an amount", "Please enter a valid dollar amount.");
       return;
     }
-    if (!merchant.trim()) {
-      Alert.alert("Enter a merchant", "Who did you spend this at?");
-      return;
-    }
-    if (!category) {
-      Alert.alert("Select a category", "Choose a category for this transaction.");
-      return;
-    }
 
     setSaving(true);
-    await addTransaction({
-      merchant: merchant.trim(),
-      category,
-      amount: parsed,
-      date: new Date().toISOString(),
-      note: note.trim() || undefined,
-    });
+    await addTransaction(name.trim(), parsed);
     setSaving(false);
     router.back();
   }
 
   function handleAmountChange(text: string) {
-    // Only allow numbers and one decimal point
     const cleaned = text.replace(/[^0-9.]/g, "");
     const parts = cleaned.split(".");
     if (parts.length > 2) return;
@@ -79,84 +65,41 @@ export default function AddTransaction() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          style={s.scroll}
-          contentContainerStyle={s.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={s.content}>
           {/* Header */}
-          <View style={s.header}>
-            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-              <Text style={s.backText}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={s.title}>Log Transaction</Text>
-          </View>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Text style={s.backText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={s.title}>Add Transaction</Text>
+
+          {/* Name */}
+          <Text style={s.label}>Name</Text>
+          <TextInput
+            style={s.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Whole Foods, Shell, Netflix"
+            placeholderTextColor={C.textSub}
+            returnKeyType="next"
+            autoCapitalize="words"
+            autoFocus
+            onSubmitEditing={() => amountRef.current?.focus()}
+          />
 
           {/* Amount */}
-          <View style={s.amountContainer}>
-            <Text style={s.currencySymbol}>$</Text>
+          <Text style={s.label}>Amount</Text>
+          <View style={s.amountRow}>
+            <Text style={s.dollar}>$</Text>
             <TextInput
+              ref={amountRef}
               style={s.amountInput}
               value={amount}
               onChangeText={handleAmountChange}
               placeholder="0.00"
               placeholderTextColor="rgba(255,255,255,0.15)"
               keyboardType="decimal-pad"
-              returnKeyType="next"
-              onSubmitEditing={() => merchantRef.current?.focus()}
-              autoFocus
-            />
-          </View>
-
-          {/* Merchant */}
-          <View style={s.field}>
-            <Text style={s.fieldLabel}>Merchant</Text>
-            <TextInput
-              ref={merchantRef}
-              style={s.input}
-              value={merchant}
-              onChangeText={setMerchant}
-              placeholder="e.g. Whole Foods, Shell, Netflix"
-              placeholderTextColor={C.textSub}
               returnKeyType="done"
-              autoCapitalize="words"
-            />
-          </View>
-
-          {/* Category */}
-          <View style={s.field}>
-            <Text style={s.fieldLabel}>Category</Text>
-            <View style={s.categoryGrid}>
-              {CATEGORIES.map((cat) => {
-                const selected = category === cat.label;
-                return (
-                  <TouchableOpacity
-                    key={cat.label}
-                    style={[s.catChip, selected && s.catChipSelected]}
-                    onPress={() => setCategory(cat.label)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={s.catIcon}>{cat.icon}</Text>
-                    <Text style={[s.catLabel, selected && s.catLabelSelected]}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Note */}
-          <View style={s.field}>
-            <Text style={s.fieldLabel}>Note <Text style={s.optional}>(optional)</Text></Text>
-            <TextInput
-              style={s.input}
-              value={note}
-              onChangeText={setNote}
-              placeholder="e.g. Weekly grocery run"
-              placeholderTextColor={C.textSub}
-              returnKeyType="done"
+              onSubmitEditing={handleSave}
             />
           </View>
 
@@ -167,11 +110,9 @@ export default function AddTransaction() {
             disabled={saving}
             activeOpacity={0.85}
           >
-            <Text style={s.saveBtnText}>{saving ? "Saving…" : "Add to Unpaid"}</Text>
+            <Text style={s.saveBtnText}>{saving ? "Saving…" : "Add"}</Text>
           </TouchableOpacity>
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -179,44 +120,26 @@ export default function AddTransaction() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  scroll: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
 
-  // Header
-  header: { marginBottom: 32 },
   backBtn: { marginBottom: 16 },
   backText: { fontSize: 15, color: C.blueBright, fontWeight: "500" },
-  title: { fontSize: 28, fontWeight: "800", color: C.text, letterSpacing: -0.5 },
-
-  // Amount
-  amountContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 36,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.08)",
-    paddingBottom: 16,
-  },
-  currencySymbol: {
-    fontSize: 40,
-    fontWeight: "300",
-    color: C.orange,
-    marginRight: 4,
-    lineHeight: 56,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 56,
+  title: {
+    fontSize: 28,
     fontWeight: "800",
-    color: C.orange,
-    letterSpacing: -2,
-    padding: 0,
+    color: C.text,
+    letterSpacing: -0.5,
+    marginBottom: 32,
   },
 
-  // Fields
-  field: { marginBottom: 24 },
-  fieldLabel: { fontSize: 13, color: C.textSub, fontWeight: "500", marginBottom: 10, letterSpacing: 0.3, textTransform: "uppercase" },
-  optional: { color: C.textSub, fontWeight: "400", textTransform: "none" },
+  label: {
+    fontSize: 13,
+    color: C.textSub,
+    fontWeight: "500",
+    marginBottom: 8,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
   input: {
     backgroundColor: C.inputBg,
     borderRadius: 14,
@@ -226,40 +149,34 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: C.text,
+    marginBottom: 24,
   },
 
-  // Category grid
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  catChip: {
+  amountRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: C.card,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: C.inputBg,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: C.cardBorder,
-    gap: 6,
+    borderColor: C.inputBorder,
+    paddingHorizontal: 16,
+    marginBottom: 32,
   },
-  catChipSelected: {
-    backgroundColor: C.blue + "30",
-    borderColor: C.blue,
+  dollar: { fontSize: 20, color: C.orange, fontWeight: "600", marginRight: 4 },
+  amountInput: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "700",
+    color: C.orange,
+    paddingVertical: 14,
+    padding: 0,
   },
-  catIcon: { fontSize: 16 },
-  catLabel: { fontSize: 13, color: C.textSub, fontWeight: "500" },
-  catLabelSelected: { color: C.blueBright, fontWeight: "600" },
 
-  // Save button
   saveBtn: {
     backgroundColor: C.blue,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
-    marginTop: 8,
     shadowColor: C.blue,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,

@@ -39,11 +39,19 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c882d9e1-da87-4d14-9b00-df798c6c5563"
+      }
+    },
+    "owner": "ezraadame"
   }
 }

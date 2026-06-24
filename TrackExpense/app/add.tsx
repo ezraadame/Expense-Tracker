@@ -1,5 +1,5 @@
 import { useExpenses } from "@/context/expenses";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
   Alert,
@@ -14,22 +14,23 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const C = {
-  bg: "#070B14",
-  card: "#0D1526",
-  cardBorder: "rgba(255,255,255,0.07)",
-  blue: "#2563EB",
-  blueBright: "#60A5FA",
-  orange: "#FBBF24",
-  text: "#F1F5F9",
-  textSub: "#475569",
-  inputBg: "#111827",
-  inputBorder: "rgba(255,255,255,0.1)",
+  bg: "#F2F2F7",
+  card: "#FFFFFF",
+  blue: "#3A90F3",
+  green: "#34C759",
+  text: "#1C1C1E",
+  textSub: "#8E8E93",
+  inputBg: "#FFFFFF",
+  inputBorder: "rgba(0,0,0,0.1)",
 };
 
 export default function AddTransaction() {
-  const { addTransaction } = useExpenses();
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
+  const { addTransaction, editTransaction } = useExpenses();
+  const params = useLocalSearchParams<{ id?: string; name?: string; amount?: string }>();
+  const isEditing = !!params.id;
+
+  const [name, setName] = useState(params.name ?? "");
+  const [amount, setAmount] = useState(params.amount ?? "");
   const [saving, setSaving] = useState(false);
 
   const amountRef = useRef<TextInput>(null);
@@ -46,9 +47,16 @@ export default function AddTransaction() {
     }
 
     setSaving(true);
-    await addTransaction(name.trim(), parsed);
-    setSaving(false);
-    router.back();
+    try {
+      if (isEditing) {
+        await editTransaction(params.id!, name.trim(), parsed);
+      } else {
+        await addTransaction(name.trim(), parsed);
+      }
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleAmountChange(text: string) {
@@ -70,7 +78,7 @@ export default function AddTransaction() {
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
             <Text style={s.backText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={s.title}>Add Transaction</Text>
+          <Text style={s.title}>{isEditing ? "Edit Transaction" : "Add Transaction"}</Text>
 
           {/* Name */}
           <Text style={s.label}>Name</Text>
@@ -110,7 +118,7 @@ export default function AddTransaction() {
             disabled={saving}
             activeOpacity={0.85}
           >
-            <Text style={s.saveBtnText}>{saving ? "Saving…" : "Add"}</Text>
+            <Text style={s.saveBtnText}>{saving ? "Saving…" : isEditing ? "Save Changes" : "Add"}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -123,7 +131,7 @@ const s = StyleSheet.create({
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
 
   backBtn: { marginBottom: 16 },
-  backText: { fontSize: 15, color: C.blueBright, fontWeight: "500" },
+  backText: { fontSize: 15, color: C.blue, fontWeight: "500" },
   title: {
     fontSize: 28,
     fontWeight: "800",
@@ -162,12 +170,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 32,
   },
-  dollar: { fontSize: 20, color: C.orange, fontWeight: "600", marginRight: 4 },
+  dollar: { fontSize: 20, color: C.green, fontWeight: "600", marginRight: 4 },
   amountInput: {
     flex: 1,
     fontSize: 20,
     fontWeight: "700",
-    color: C.orange,
+    color: C.blue,
     paddingVertical: 14,
     padding: 0,
   },
@@ -177,11 +185,6 @@ const s = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
-    shadowColor: C.blue,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { fontSize: 16, fontWeight: "700", color: "#FFF" },

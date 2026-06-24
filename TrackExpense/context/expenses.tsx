@@ -20,6 +20,8 @@ type ContextType = {
   history: PaymentRecord[];
   total: number;
   addTransaction: (name: string, amount: number) => Promise<void>;
+  editTransaction: (id: string, name: string, amount: number) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
   payAll: () => Promise<void>;
 };
 
@@ -54,6 +56,20 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem("transactions", JSON.stringify(updated));
   }
 
+  async function editTransaction(id: string, name: string, amount: number) {
+    const updated = transactions.map((tx) =>
+      tx.id === id ? { ...tx, name, amount } : tx
+    );
+    setTransactions(updated);
+    await AsyncStorage.setItem("transactions", JSON.stringify(updated));
+  }
+
+  async function deleteTransaction(id: string) {
+    const updated = transactions.filter((tx) => tx.id !== id);
+    setTransactions(updated);
+    await AsyncStorage.setItem("transactions", JSON.stringify(updated));
+  }
+
   async function payAll() {
     if (transactions.length === 0) return;
     const record: PaymentRecord = {
@@ -74,7 +90,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
   const total = transactions.reduce((s, t) => s + t.amount, 0);
 
   return (
-    <ExpensesContext.Provider value={{ transactions, history, total, addTransaction, payAll }}>
+    <ExpensesContext.Provider value={{ transactions, history, total, addTransaction, editTransaction, deleteTransaction, payAll }}>
       {children}
     </ExpensesContext.Provider>
   );

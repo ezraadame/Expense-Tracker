@@ -1,4 +1,5 @@
 import { useExpenses } from "@/context/expenses";
+import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -12,20 +13,25 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const C = {
-  bg: "#070B14",
-  card: "#0D1526",
-  cardBorder: "rgba(255,255,255,0.07)",
-  blue: "#2563EB",
-  blueBright: "#60A5FA",
-  orange: "#FBBF24",
-  text: "#F1F5F9",
-  textSub: "#475569",
-  green: "#34D399",
-  red: "#F87171",
+  bg: "#F2F2F7",
+  card: "#FFFFFF",
+  cardBorder: "rgba(0,0,0,0.08)",
+  blue: "#3A90F3",
+  text: "#1C1C1E",
+  textSub: "#8E8E93",
+  green: "#34C759",
+  red: "#FF3B30",
 };
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtDateTime(iso: string) {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${date} at ${time}`;
 }
 
 function fmtDate(iso: string) {
@@ -37,8 +43,16 @@ function fmtDate(iso: string) {
 }
 
 export default function Dashboard() {
-  const { transactions, history, total, payAll } = useExpenses();
+  const { transactions, history, total, payAll, deleteTransaction } = useExpenses();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+
+  function handleDelete(id: string) {
+    Alert.alert("Delete Transaction", "Are you sure you want to remove this?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteTransaction(id) },
+    ]);
+  }
 
   function handlePay() {
     if (total === 0) return;
@@ -54,18 +68,23 @@ export default function Dashboard() {
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
+      <StatusBar style="dark" />
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <Text style={s.title}>Expense Tracker</Text>
 
         {/* Total Card */}
         <View style={s.totalCard}>
           <Text style={s.totalLabel}>Running Total</Text>
           <Text style={s.totalAmount}>${fmt(total)}</Text>
+          <Text style={s.totalSub}>
+            {transactions.length === 0
+              ? "No pending transactions"
+              : `${transactions.length} unpaid ${transactions.length === 1 ? "transaction" : "transactions"}`}
+          </Text>
 
           <TouchableOpacity
             style={[s.payBtn, total === 0 && s.payBtnDisabled]}
@@ -87,18 +106,50 @@ export default function Dashboard() {
             <Text style={s.emptySub}>Tap + to add one</Text>
           </View>
         ) : (
-          transactions.map((tx) => (
-            <View key={tx.id} style={s.row}>
-              <Text style={s.rowName}>{tx.name}</Text>
-              <Text style={s.rowAmount}>${fmt(tx.amount)}</Text>
-            </View>
-          ))
+          transactions.map((tx) => {
+            const expanded = expandedTxId === tx.id;
+            return (
+              <View key={tx.id} style={s.row}>
+                <TouchableOpacity
+                  style={s.rowMain}
+                  onPress={() => setExpandedTxId(expanded ? null : tx.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={s.rowLeft}>
+                    <Text style={s.rowName}>{tx.name}</Text>
+                    <Text style={s.rowDate}>{fmtDateTime(tx.date)}</Text>
+                  </View>
+                  <Text style={s.rowAmount}>${fmt(tx.amount)}</Text>
+                </TouchableOpacity>
+
+                {expanded && (
+                  <View style={s.rowActions}>
+                    <TouchableOpacity
+                      style={s.editBtn}
+                      onPress={() => {
+                        setExpandedTxId(null);
+                        router.push({ pathname: "/add", params: { id: tx.id, name: tx.name, amount: String(tx.amount) } });
+                      }}
+                    >
+                      <Text style={s.editBtnText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.deleteBtn}
+                      onPress={() => handleDelete(tx.id)}
+                    >
+                      <Text style={s.deleteBtnText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            );
+          })
         )}
 
         {/* Payment History */}
         {history.length > 0 && (
           <>
-            <Text style={s.sectionTitle}>Payment History</Text>
+            <Text style={[s.sectionTitle, s.sectionTitleGap]}>Payment History</Text>
             {history.map((record) => {
               const expanded = expandedId === record.id;
               return (
@@ -159,7 +210,7 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: C.text,
     letterSpacing: -0.5,
-    marginBottom: 20,
+    marginBottom: 32,
   },
 
   totalCard: {
@@ -169,17 +220,23 @@ const s = StyleSheet.create({
     marginBottom: 28,
   },
   totalLabel: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.65)",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
     letterSpacing: 0.5,
     textTransform: "uppercase",
+    fontWeight: "600",
   },
   totalAmount: {
-    fontSize: 52,
+    fontSize: 64,
     fontWeight: "800",
     color: "#FFF",
     letterSpacing: -2,
     marginTop: 4,
+    marginBottom: 4,
+  },
+  totalSub: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.65)",
     marginBottom: 20,
   },
   payBtn: {
@@ -188,15 +245,18 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  payBtnDisabled: { backgroundColor: "rgba(255,255,255,0.2)" },
+  payBtnDisabled: { backgroundColor: "rgba(255,255,255,0.25)" },
   payBtnText: { fontSize: 15, fontWeight: "700", color: C.blue },
 
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 22,
     fontWeight: "700",
     color: C.text,
     marginBottom: 12,
-    letterSpacing: -0.2,
+    letterSpacing: -0.4,
+  },
+  sectionTitleGap: {
+    marginTop: 24,
   },
 
   empty: {
@@ -211,19 +271,45 @@ const s = StyleSheet.create({
   emptySub: { fontSize: 13, color: C.textSub },
 
   row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     backgroundColor: C.card,
     borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: C.cardBorder,
+    borderLeftWidth: 4,
+    borderLeftColor: C.red,
+    overflow: "hidden",
   },
-  rowName: { fontSize: 15, fontWeight: "500", color: C.text, flex: 1 },
-  rowAmount: { fontSize: 15, fontWeight: "700", color: C.orange },
+  rowMain: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  rowLeft: { flex: 1, marginRight: 12 },
+  rowName: { fontSize: 15, fontWeight: "600", color: C.text },
+  rowDate: { fontSize: 12, color: C.textSub, marginTop: 3 },
+  rowAmount: { fontSize: 15, fontWeight: "700", color: C.red },
+  rowActions: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+  },
+  editBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightColor: C.cardBorder,
+  },
+  editBtnText: { fontSize: 14, fontWeight: "600", color: C.blue },
+  deleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  deleteBtnText: { fontSize: 14, fontWeight: "600", color: C.red },
 
   historyCard: {
     backgroundColor: C.card,
@@ -257,7 +343,7 @@ const s = StyleSheet.create({
     paddingVertical: 6,
   },
   historyItemName: { fontSize: 13, color: C.textSub, flex: 1 },
-  historyItemAmount: { fontSize: 13, fontWeight: "600", color: C.textSub },
+  historyItemAmount: { fontSize: 13, fontWeight: "600", color: C.text },
 
   fab: {
     position: "absolute",
@@ -269,11 +355,6 @@ const s = StyleSheet.create({
     backgroundColor: C.blue,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: C.blue,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 12,
   },
   fabText: { color: "#FFF", fontSize: 28, fontWeight: "300", lineHeight: 32 },
 });

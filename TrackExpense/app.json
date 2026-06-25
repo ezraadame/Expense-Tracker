@@ -10,7 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.ezraadame.TrackExpense",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
@@ -52,6 +56,12 @@
         "projectId": "c882d9e1-da87-4d14-9b00-df798c6c5563"
       }
     },
-    "owner": "ezraadame"
+    "owner": "ezraadame",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c882d9e1-da87-4d14-9b00-df798c6c5563"
+    }
   }
 }

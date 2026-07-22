@@ -104,7 +104,7 @@ export default function AddTransaction() {
               value={amount}
               onChangeText={handleAmountChange}
               placeholder="0.00"
-              placeholderTextColor="rgba(255,255,255,0.15)"
+              placeholderTextColor={C.textSub}
               keyboardType="decimal-pad"
               returnKeyType="done"
               onSubmitEditing={handleSave}
@@ -175,7 +175,7 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: "700",
-    color: C.blue,
+    color: C.text,
     paddingVertical: 14,
     padding: 0,
   },
